@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mühendislik Yazılımları Keşif Aracı</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Cool Slate & Vibrant Teal Gradient -->
+    <!-- Application Structure Plan: Bu uygulama, tek sayfalık interaktif bir pano olarak tasarlanmıştır. Üst kısımda kategori bazlı filtreleme butonları bulunur. Bu butonlar, kullanıcının belirli bir kullanım amacına yönelik yazılımları kolayca görmesini sağlar (örneğin, sadece "Tasarım" veya "Analiz" yazılımları). Ana içerik alanında, her bir yazılım için bilgileri (şirket, açıklama, puan) içeren kartlar, duyarlı bir grid yapısıyla listelenir. Sayfanın alt kısmında ise, yazılımların kategorilere göre dağılımını gösteren interaktif bir grafik yer alır. Bu yapı, kullanıcının bilgiyi hem detaylı (kartlar) hem de bütünsel (grafik) olarak hızlıca kavramasını ve aradığı bilgiye kolayca ulaşmasını hedefler. -->
+    <!-- Visualization & Content Choices: Yazılım listesi, her bir program için temel bilgileri sunan kartlar halinde düzenlenmiştir. Amaç, her bir yazılım hakkında hızlı ve anlaşılır bilgi sunmaktır. Etkileşim, kategori butonlarına tıklayarak kart listesini dinamik olarak filtrelemek üzerine kuruludur. Bu, kullanıcının ilgilendiği alana odaklanmasını sağlar. Kategorik dağılımı göstermek için Chart.js kullanılarak bir "Doughnut" (halka) grafik oluşturulmuştur. Bu grafik, hangi tür yazılımların daha yaygın olduğuna dair anlık bir görsel özet sunar ve raporun bütünsel anlaşılırlığını artırır. Tüm görselleştirmeler, belirtilen kısıtlamalara uygun olarak Canvas üzerine çizilmiştir. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+        }
+        .active-filter {
+            background-image: linear-gradient(to right, #0d9488, #059669);
+            color: white !important;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            transform: scale(1.05);
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px; /* Base height for mobile */
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px; /* Larger height for desktop */
+            }
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+         .modal-glass {
+            background: rgba(23, 37, 84, 0.6); /* Darker overlay for better contrast */
+            backdrop-filter: blur(8px);
+        }
+        .tab-btn.active {
+            border-color: #0d9488;
+            color: #0d9488;
+            background-color: #f0fdfa;
+        }
+        .read-more {
+            color: #0d9488;
+            font-weight: 600;
+            cursor: pointer;
+            margin-left: 4px;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+        <header class="relative text-center mb-12 md:mb-16">
+             <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-cyan-500 mb-4">
+                Mühendislik Yazılımları Evreni
+            </h1>
+            <p class="text-base sm:text-lg text-slate-600 max-w-3xl mx-auto">
+                Metalurji, Malzeme ve Makine Mühendisliği alanlarının geleceğini şekillendiren kritik yazılımları keşfedin ve kariyer potansiyelinizi ortaya çıkarın.
+            </p>
+        </header>
+
+        <main>
+            <section id="filters" class="mb-12">
+                <div class="flex flex-wrap justify-center gap-2 md:gap-4">
+                </div>
+            </section>
+            
+            <section id="software-list">
+                <div id="software-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                </div>
+            </section>
+
+            <section id="visualization" class="mt-20 md:mt-24 pt-12 md:pt-16 border-t border-slate-200">
+                <div class="grid lg:grid-cols-2 gap-12 items-center">
+                    <div class="text-center lg:text-left">
+                        <h2 class="text-3xl lg:text-4xl font-bold text-teal-800 mb-4">Yazılımların Stratejik Dağılımı</h2>
+                        <p class="text-slate-600 text-lg leading-relaxed">
+                            Bu interaktif grafik, mühendislik araçlarının farklı kategorilerdeki yoğunluğunu göstermektedir. Tasarım, analiz ve simülasyon gibi alanların endüstrideki ağırlığını görerek hangi becerilerin daha çok talep edildiğini anlayabilirsiniz.
+                        </p>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <footer class="text-center py-10 mt-12 md:mt-16 bg-slate-200 border-t border-slate-300">
+        <p class="text-slate-500">&copy; 2025 Mühendislik Yazılımları Raporu. Eğitim amaçlı hazırlanmıştır.</p>
+    </footer>
+
+    <!-- Details Modal -->
+    <div id="details-modal" class="fixed inset-0 modal-glass items-center justify-center hidden z-50 p-4">
+        <div class="bg-slate-50/95 backdrop-blur-lg border border-slate-200 rounded-xl shadow-2xl w-full max-w-4xl relative transform transition-all duration-300 scale-95 opacity-0 flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center p-5 border-b border-slate-200 flex-shrink-0">
+                <h2 class="text-xl font-bold text-teal-800" id="modal-title">Detaylı Analiz</h2>
+                 <button class="close-modal-btn text-gray-400 hover:text-gray-800 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-6 md:p-8 overflow-y-auto">
+                <div class="border-b border-slate-200 mb-4">
+                    <nav class="-mb-px flex space-x-6">
+                        <button class="tab-btn active whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300" data-tab="career">Kariyer Analizi</button>
+                        <button class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300" data-tab="project">Proje Fikri</button>
+                        <button class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300" data-tab="examples">✨ İkonik Projeler</button>
+                    </nav>
+                </div>
+                <div id="career-tab-content" class="tab-content"></div>
+                <div id="project-tab-content" class="tab-content hidden"></div>
+                <div id="examples-tab-content" class="tab-content hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const softwareData = [
+            { name: 'SolidWorks', company: 'Dassault Systèmes', category: 'Tasarım & Modelleme', description: '3D katı modelleme için endüstri standardıdır. Parça, montaj tasarımı ve teknik resim oluşturmada geniş yetenekler sunar. Prototipleme ve imalat için yaygın olarak kullanılır.', rating: 5, careerAnalysis: { opportunities: ['Makine Tasarımı ve Ürün Geliştirme', 'İmalat ve Prototipleme Sektörü', 'Tasarım Danışmanlığı', 'Ar-Ge Departmanları'], titles: ['Tasarım Mühendisi', 'CAD Teknisyeni', 'Makine Ressamı', 'Ürün Geliştirme Uzmanı'], skills: ['3D Katı Modelleme', 'Teknik Resim', 'Montaj Modellemesi', 'Malzeme Bilgisi'] }, projectIdea: { title: 'Bisiklet için Ayarlanabilir Telefon Tutucu Tasarımı', description: 'Sürücünün telefonunu gidona güvenli bir şekilde monte etmesini sağlayan, farklı telefon boyutlarına ve gidon çaplarına uyumlu, 3D yazıcıda üretilebilir bir telefon tutucu mekanizması tasarlayın. Proje, parça modelleme, montaj ilişkileri ve üretim kolaylığı gibi temel SolidWorks yeteneklerini kapsar.' }, iconicExamples: [{title: 'Formlabs 3D Yazıcılar', description: 'Yüksek hassasiyetli 3D yazıcılar üreten Formlabs, karmaşık mekanik aksamlarını ve dış kasalarını tasarlamak için SolidWorks\'ü yoğun bir şekilde kullanır.'}, {title: 'FIRST Robotics Competition Robotları', description: 'Dünya çapında binlerce lise takımı, her yıl düzenlenen robot yarışmaları için karmaşık ve fonksiyonel robotlarını SolidWorks üzerinde tasarlar ve simüle eder.'}] },
+            { name: 'CATIA', company: 'Dassault Systèmes', category: 'Tasarım & Modelleme', description: 'Otomotiv ve havacılık gibi büyük endüstrilerde kullanılan gelişmiş bir CAD/CAM/CAE yazılımıdır. Yüzey modelleme ve PLM entegrasyonu sunar.', rating: 5, careerAnalysis: { opportunities: ['Otomotiv Endüstrisi', 'Havacılık ve Uzay Sanayii', 'Endüstriyel Tasarım', 'Savunma Sanayii'], titles: ['Otomotiv Tasarım Mühendisi', 'Havacılık Yapısal Tasarım Uzmanı', 'Kalıp Tasarımcısı', 'PLM Uzmanı'], skills: ['İleri Yüzey Modelleme', 'Kompozit Malzeme Tasarımı', 'Kinematik Analiz', 'PLM Yönetimi'] }, projectIdea: { title: 'Ergonomik Oyuncu Faresi Dış Kabuk Tasarımı', description: 'CATIA\'nın gelişmiş yüzey modelleme (Generative Shape Design) yeteneklerini kullanarak, insan eline tam oturan, estetik ve ergonomik bir oyuncu faresi dış kabuğu tasarlayın. Proje, karmaşık ve akıcı yüzeyler oluşturma becerisini geliştirmek için idealdir.' }, iconicExamples: [{title: 'Boeing 777 Uçağı', description: 'Tamamen bilgisayar ortamında tasarlanan ilk yolcu uçağı olan Boeing 777, baştan sona CATIA kullanılarak geliştirilmiştir. Bu proje, dijital tasarım ve PLM\'nin devrimini başlatmıştır.'}, {title: 'Tesla Model S', description: 'Tesla, araçlarının gövde panelleri, şasi ve iç mekan tasarımları dahil olmak üzere tüm ürün geliştirme süreçlerinde CATIA\'yı merkezi bir araç olarak kullanmaktadır.'}] },
+            { name: 'AutoCAD', company: 'Autodesk', category: 'Tasarım & Modelleme', description: '2D ve 3D çizimler için temel bir CAD yazılımıdır. Özellikle teknik resim, mimari planlar ve şematik çizimler için kullanılır. Hassas ve vektör tabanlıdır.', rating: 4, careerAnalysis: { opportunities: ['İnşaat ve Mimarlık', 'Tesisat ve Altyapı Projeleri', 'Teknik Resim Hazırlama', 'Şehir Planlama'], titles: ['Teknik Ressam', 'Proje Çizim Sorumlusu', 'İnşaat Teknikeri', 'Tesisat Mühendisi'], skills: ['2D Teknik Çizim', 'Layout ve Pafta Hazırlama', 'İzometrik Çizim', 'Temel 3D Modelleme'] }, projectIdea: { title: 'Bir Makine Atölyesinin 2D Yerleşim Planı', description: 'CNC tezgahları, montaj masaları, depolama alanları ve personel yürüme yollarını içeren detaylı bir makine atölyesi yerleşim planını 2D olarak çizin. Proje, katman (layer) yönetimi, ölçülendirme ve standartlara uygun teknik çizim oluşturma becerilerini pekiştirir.' }, iconicExamples: [{title: 'Burj Khalifa\'nın Mimari Planları', description: 'Dünyanın en yüksek binası olan Burj Khalifa\'nın karmaşık kat planları, yapısal detayları ve tesisat şemaları gibi binlerce teknik çizimi AutoCAD kullanılarak hazırlanmıştır.'}, {title: 'Pekin Ulusal Stadyumu (Kuş Yuvası)', description: '2008 Olimpiyatları için inşa edilen bu ikonik stadyumun karmaşık çelik kafes yapısının detaylı 2D ve 3D çizimleri AutoCAD ile oluşturulmuştur.'}] },
+            { name: 'Siemens NX', company: 'Siemens', category: 'Tasarım & Modelleme', description: 'Tasarım, simülasyon ve imalatı tek platformda birleştiren gelişmiş bir CAD/CAM/CAE çözümüdür. Karmaşık parça imalatı için tercih edilir.', rating: 4, careerAnalysis: { opportunities: ['Beyaz Eşya Sektörü', 'Tıbbi Cihaz Üretimi', 'Makine İmalatı ve Otomasyon', 'Enerji Santralleri'], titles: ['Tasarım ve İmalat Mühendisi', 'CAM Programcısı', 'CAE Analisti', 'Mekatronik Mühendisi'], skills: ['Entegre CAD/CAM/CAE', 'Serbest Form Modelleme', 'Gelişmiş Montaj Yönetimi', 'CNC Programlama'] }, projectIdea: { title: '3D Yazıcı için Kompakt Bir Filament Tutucu Mekanizması', description: 'Farklı filament makaralarını tutabilen, az yer kaplayan ve filamenti sorunsuz bir şekilde besleyen kompakt bir mekanizma tasarlayın. NX\'in entegre yapısını kullanarak hem tasarımı yapın hem de basit bir hareket simülasyonu ile çalışmasını doğrulayın.' }, iconicExamples: [{title: 'Dyson Elektrikli Süpürgeler', description: 'Dyson, yenilikçi ve karmaşık tasarımlara sahip ürünlerinin (süpürgeler, saç kurutma makineleri) konsept tasarımından imalatına kadar tüm süreçlerde Siemens NX\'i kullanır.'}, {title: 'Red Bull Racing Formula 1 Araçları', description: 'Red Bull Racing F1 takımı, aerodinamik parçalar, şasi ve motor bileşenleri de dahil olmak üzere yüksek performanslı yarış arabalarını tasarlamak ve geliştirmek için Siemens NX yazılımını kullanmaktadır.'}] },
+            { name: 'SolidCAM', company: 'SolidCAM Ltd.', category: 'Tasarım & Modelleme', description: 'SolidWorks ve Inventor ile entegre çalışan bir CAM yazılımıdır. CNC tezgahlar için takım yolları ve G-kodları oluşturur. iMachining ile verimlidir.', rating: 4, careerAnalysis: { opportunities: ['Talaşlı İmalat Atölyeleri', 'Kalıp ve Fikstür Üretimi', 'Otomotiv Yan Sanayi', 'Havacılık Parça Üretimi'], titles: ['CAM Uzmanı / Operatörü', 'CNC Programcısı', 'Üretim Mühendisi', 'İmalat Sorumlusu'], skills: ['Takım Yolu Stratejileri', 'G-Kodu Bilgisi', 'iMachining Teknolojisi', 'Post-Processor Ayarlama'] }, projectIdea: { title: 'Alüminyum Bir Parça için 3 Eksenli CNC İşleme Simülasyonu', description: 'SolidWorks\'te tasarlanmış basit bir alüminyum motor bağlantı braketinin SolidCAM kullanarak 3 eksenli CNC frezede işlenmesi için takım yollarını oluşturun. Kaba işleme, finiş işleme ve delik delme operasyonlarını planlayarak G-kodunu simüle edin.' }, iconicExamples: [{title: 'Lüks Saat Mekanizmaları', description: 'İsviçreli saat üreticileri, saat kasaları ve mekanizmalarındaki yüzlerce küçük ve karmaşık parçanın yüksek hassasiyetle işlenmesi için SolidCAM gibi gelişmiş CAM yazılımlarını kullanır.'}, {title: 'Tıbbi İmplantlar', description: 'Kalça ve diz protezleri gibi titanyum alaşımından yapılan kişiye özel tıbbi implantların karmaşık geometrileri, SolidCAM ile programlanan 5 eksenli CNC tezgahlarda işlenir.'}] },
+            { name: 'ANSYS', company: 'ANSYS, Inc.', category: 'Yapısal & Süreç Analizi', description: 'Kapsamlı bir mühendislik simülasyon (CAE) yazılımıdır. Yapısal, akışkanlar, termal ve elektromanyetik analizler yaparak tasarımları test eder.', rating: 5, careerAnalysis: { opportunities: ['Ar-Ge Merkezleri', 'Savunma ve Havacılık', 'Otomotiv Sektörü', 'Enerji ve Elektronik'], titles: ['CAE Analiz Mühendisi', 'Yapısal Analiz Uzmanı', 'CFD Mühendisi', 'Simülasyon Uzmanı'], skills: ['Sonlu Elemanlar Analizi (FEA)', 'Hesaplamalı Akışkanlar Dinamiği (CFD)', 'Termal Simülasyon', 'Optimizasyon'] }, projectIdea: { title: 'Bir Bisiklet Pedal Kolunun Statik Yük Altında Analizi', description: 'Bir bisiklet sürücüsünün pedala uyguladığı maksimum kuvveti varsayarak, standart bir alüminyum pedal kolunun gerilme ve yer değiştirme dağılımını ANSYS Workbench kullanarak analiz edin. En çok gerilmenin nerede biriktiğini ve tasarımın güvenli olup olmadığını belirleyin.' }, iconicExamples: [{title: 'Formula 1 Aerodinamiği', description: 'Tüm F1 takımları, araçlarının etrafındaki hava akışını simüle etmek, sürtünmeyi azaltmak ve yere basma kuvvetini optimize etmek için ANSYS Fluent (CFD) yazılımını yoğun bir şekilde kullanır.'}, {title: 'Akıllı Telefonların Düşme Testi', description: 'Apple ve Samsung gibi şirketler, yeni telefon modellerinin düşme anındaki darbe etkilerini, ekran kırılma riskini ve iç bileşenlerin dayanıklılığını test etmek için ANSYS ile sanal düşme testleri gerçekleştirir.'}] },
+            { name: 'Abaqus', company: 'Dassault Systèmes', category: 'Yapısal & Süreç Analizi', description: 'Gelişmiş ve karmaşık doğrusal olmayan problemlerin çözümü için bir sonlu elemanlar analizi (FEA) yazılımıdır. Malzeme davranışı ve yorulma analizlerinde öne çıkar.', rating: 4, careerAnalysis: { opportunities: ['Akademik Araştırmalar', 'İleri Mühendislik Firmaları', 'Polimer Endüstrisi', 'Biyomekanik'], titles: ['İleri Analiz Mühendisi', 'Araştırma Mühendisi', 'Malzeme Modelleme Uzmanı', 'Doktora Öğrencisi'], skills: ['Doğrusal Olmayan Malzeme Modelleri', 'Yorulma ve Kırılma Mekaniği', 'Kontak Analizi', 'Python Scripting'] }, projectIdea: { title: 'Elastomerik Bir Contanın Sıkışma Davranışının Simülasyonu', description: 'İki metal plaka arasına yerleştirilmiş kauçuk (elastomerik) bir contanın sıkıştırıldığında nasıl deforme olduğunu ve sızdırmazlık basıncını nasıl oluşturduğunu Abaqus ile simüle edin. Proje, doğrusal olmayan malzeme ve kontak analizi konularına iyi bir başlangıçtır.' }, iconicExamples: [{title: 'Otomobil Lastiği Performansı', description: 'Goodyear ve Michelin gibi lastik üreticileri, lastiklerin yol tutuşu, aşınma ömrü, suda kızaklama (aquaplaning) ve gürültü seviyesi gibi karmaşık davranışlarını modellemek için Abaqus\'u kullanır.'}, {title: 'Kalp Stentlerinin Analizi', description: 'Tıbbi cihaz üreticileri, damar içine yerleştirilen stentlerin açılma mekanizmasını, damar duvarıyla etkileşimini ve uzun süreli yorulma ömrünü Abaqus ile simüle ederek daha güvenli tasarımlar geliştirir.'}] },
+            { name: 'Deform', company: 'Scientific Forming Technologies Corp.', category: 'Yapısal & Süreç Analizi', description: 'Metal şekillendirme (dövme, haddeleme) simülasyonu için özel olarak geliştirilmiştir. Malzeme akışını ve gerilmeleri analiz ederek hataları öngörür.', rating: 4, careerAnalysis: { opportunities: ['Dövme ve Haddeleme Tesisleri', 'Metalurji Ar-Ge', 'Otomotiv Parça Üretimi', 'Kalıp Tasarım Firmaları'], titles: ['Proses Simülasyon Mühendisi', 'Sıcak Şekillendirme Uzmanı', 'Ar-Ge Metalurji Mühendisi', 'Kalıp Geliştirme Mühendisi'], skills: ['Metal Şekillendirme Bilgisi', 'Mikroyapı Modellemesi', 'Isı Transferi Analizi', 'Kalıp Gerilme Analizi'] }, projectIdea: { title: 'Sıcak Dövme ile Bir El Aletinin Üretim Simülasyonu', description: 'Basit bir el aleti olan çekiç başının, ısıtılmış bir çelik kütükten sıcak dövme yöntemiyle nasıl üretildiğini Deform kullanarak 2D olarak simüle edin. Malzeme akışını, kalıbın dolmasını ve oluşan gerilmeleri analiz ederek olası üretim hatalarını öngörün.' }, iconicExamples: [{title: 'Otomobil Krank Milleri', description: 'Motorların en kritik parçalarından olan krank millerinin dövme ile üretim süreci, kalıpların tam dolmasını sağlamak ve içyapıda istenen lif yönelimini elde etmek için Deform ile optimize edilir.'}, {title: 'Havacılık Türbin Diskleri', description: 'Jet motorlarındaki nikel bazlı süperalaşım türbin disklerinin dövme süreci, malzeme israfını en aza indirmek ve üstün mekanik özellikler elde etmek için Deform simülasyonları ile tasarlanır.'}] },
+            { name: 'CES Selector', company: 'Granta Design (ANSYS)', category: 'Malzeme Bilimi & Simülasyon', description: 'Mühendislik uygulamaları için en uygun malzemeyi seçmeye yöneliktir. Geniş veri tabanı ile malzemeleri grafiksel olarak karşılaştırarak seçimi kolaylaştırır.', rating: 5, careerAnalysis: { opportunities: ['Ürün Geliştirme (Ar-Ge)', 'Malzeme Tedarik ve Kalite', 'Sürdürülebilirlik', 'Mühendislik Danışmanlığı'], titles: ['Malzeme Seçim Uzmanı', 'Ar-Ge Mühendisi', 'Ürün Tasarımcısı', 'Kalite Güvence Mühendisi'], skills: ['Ashby Diyagramları', 'Malzeme Veri Tabanı Yönetimi', 'Maliyet Analizi', 'Yaşam Döngüsü Değerlendirmesi (LCA)'] }, projectIdea: { title: 'Yüksek Performanslı bir Bisiklet Kadrosu için Malzeme Seçimi', description: 'CES Selector\'ün malzeme veri tabanını ve Ashby diyagramlarını kullanarak, hem hafif hem de rijit olması gereken bir yarış bisikleti kadrosu için en uygun malzemeyi (örneğin alüminyum alaşımları, titanyum alaşımları, kompozitler) sistematik olarak seçin ve seçiminizi gerekçelendirin.' }, iconicExamples: [{title: 'Hafif Drone Gövdeleri', description: 'DJI gibi drone üreticileri, uçuş süresini en üst düzeye çıkarmak için hem hafif hem de yeterince dayanıklı olan en uygun polimer ve kompozit malzemeleri seçmek için CES Selector gibi araçları kullanır.'}, {title: 'Sürdürülebilir Ambalaj Tasarımı', description: 'Unilever ve P&G gibi şirketler, çevresel etkiyi (karbon ayak izi) azaltmak amacıyla geri dönüştürülebilir veya biyobozunur en iyi ambalaj malzemesini seçerken bu tür yazılımlardan yararlanır.'}] },
+            { name: 'Thermo-Calc', company: 'Thermo-Calc Software AB', category: 'Malzeme Bilimi & Simülasyon', description: 'Termodinamik hesaplamalar ve faz diyagramları oluşturur. Alaşımların kararlı fazlarını ve özelliklerini tahmin ederek alaşım tasarımında rol oynar.', rating: 5, careerAnalysis: { opportunities: ['Demir-Çelik Endüstrisi', 'İleri Alaşım Geliştirme', 'Akademik Araştırma', 'Kaynak Metalurjisi'], titles: ['Alaşım Geliştirme Mühendisi', 'Araştırmacı (Metalurji)', 'Proses Metalurji Uzmanı', 'Kaynak Mühendisi'], skills: ['Hesaplamalı Termodinamik (CALPHAD)', 'Faz Diyagramı Yorumlama', 'Katılaşma Modellemesi', 'Termodinamik Veri Tabanları'] }, projectIdea: { title: 'Düşük Alaşımlı Çeliğin Faz Diyagramının Hesaplanması', description: 'Belirli bir kimyasal kompozisyona sahip (Fe-C-Mn-Cr) düşük alaşımlı bir çeliğin, farklı sıcaklıklardaki kararlı fazlarını (ferrit, östenit, sementit vb.) Thermo-Calc ile hesaplayın ve sıcaklığa karşı faz miktarlarını gösteren bir diyagram oluşturun. Bu, ısıl işlem davranışını anlamak için temel bir adımdır.' }, iconicExamples: [{title: 'Jet Motoru Türbin Kanatları', description: 'General Electric ve Rolls-Royce, jet motorlarının en sıcak kısımlarında çalışan nikel bazlı yeni nesil süperalaşımları, yüzlerce deneme yapmak yerine Thermo-Calc ile tasarlar ve optimize eder.'}, {title: 'Üçüncü Nesil Gelişmiş Yüksek Mukavemetli Çelikler (AHSS)', description: 'Otomotiv endüstrisi için daha hafif ve daha güvenli araçlar üretmek amacıyla geliştirilen yeni nesil çeliklerin kimyasal kompozisyonları ve ısıl işlem parametreleri, bu yazılım kullanılarak belirlenir.'}] },
+            { name: 'DICTRA', company: 'Thermo-Calc Software AB', category: 'Malzeme Bilimi & Simülasyon', description: 'Malzemelerdeki difüzyon kontrollü faz dönüşümlerini simüle eder. Isıl işlem süreçleri sırasında mikro yapıdaki değişimleri (çökelme vb.) tahmin eder.', rating: 4, careerAnalysis: { opportunities: ['Isıl İşlem Tesisleri', 'Malzeme Ar-Ge Laboratuvarları', 'Yüksek Sıcaklık Alaşımları', 'Kaplama Teknolojileri'], titles: ['Isıl İşlem Mühendisi', 'Malzeme Araştırmacısı', 'Proses Geliştirme Mühendisi', 'Mikroyapı Analiz Uzmanı'], skills: ['Difüzyon Kinetiği', 'Faz Dönüşümleri Modellemesi', 'Çökelme Simülasyonu', 'Proses Optimizasyonu'] }, projectIdea: { title: 'Çelik Yüzeyinde Karbürleme Simülasyonu', description: 'Düşük karbonlu bir çelik parçanın yüzeyini sertleştirmek amacıyla yapılan karbürleme (sementasyon) ısıl işlemi sonrası, yüzeyden içeriye doğru karbon atomlarının difüzyon profilini belirli bir sıcaklık ve sürede DICTRA ile simüle edin. Oluşan sert tabaka derinliğini tahmin edin.' }, iconicExamples: [{title: 'Alüminyum Alaşımlarında Yaşlandırma Isıl İşlemi', description: 'Havacılıkta kullanılan alüminyum alaşımlarının mukavemetini artırmak için yapılan yaşlandırma ısıl işleminin süresi ve sıcaklığı, istenen çökelti yapısını elde etmek için DICTRA ile optimize edilir.'}, {title: 'Yarı İletken Üretimi', description: 'Mikroçiplerin üretiminde, silikon yongalara farklı elementlerin kontrollü bir şekilde difüzyonla eklenmesi (doping) işlemi, atomik düzeyde hassas kontrol için bu tür simülasyonlarla modellenir.'}] },
+            { name: 'MagmaSoft', company: 'MAGMA Gießereitechnologie GmbH', category: 'Malzeme Bilimi & Simülasyon', description: 'Döküm süreçlerinin simülasyonu için endüstri lideridir. Metalin dolumunu, katılaşmasını ve soğumasını analiz ederek üretim öncesi döküm hatalarını tespit eder.', rating: 5, careerAnalysis: { opportunities: ['Dökümhaneler', 'Otomotiv Motor Üretimi', 'Kalıp Tasarım ve İmalatı', 'Döküm Simülasyon Danışmanlığı'], titles: ['Döküm Simülasyon Mühendisi', 'Metod Mühendisi', 'Dökümhane Mühendisi', 'Proses Kalite Mühendisi'], skills: ['Döküm Prosesleri', 'Katılaşma ve Akış Simülasyonu', 'Yolluk Tasarımı', 'Döküm Hataları Analizi'] }, projectIdea: { title: 'Bir Alüminyum Motor Pistonunun Döküm Simülasyonu', description: 'Bir alüminyum motor pistonunun kalıcı kalıba döküm sürecini MagmaSoft ile simüle edin. Ergimiş metalin kalıbı nasıl doldurduğunu, katılaşma sürecini ve olası çekinti boşluğu gibi döküm hatalarının nerede oluşabileceğini analiz ederek yolluk ve besleyici sistemini iyileştirin.' }, iconicExamples: [{title: 'Otomobil Motor Blokları', description: 'Ford, VW ve BMW gibi büyük otomobil üreticileri, karmaşık iç kanallara sahip motor bloklarının dökümünü, hurda oranını azaltmak ve kaliteyi artırmak için MagmaSoft ile simüle eder.'}, {title: 'Büyük Rüzgar Türbini Kanat Göbekleri', description: 'Tonlarca ağırlıktaki rüzgar türbini kanat göbeklerinin (hub) hatasız bir şekilde dökülebilmesi, metalin kalıbı nasıl doldurduğunun ve nerede katılaştığının MagmaSoft ile önceden analiz edilmesine bağlıdır.'}] },
+            { name: 'MATLAB', company: 'MathWorks', category: 'Programlama & Otomasyon', description: 'Sayısal hesaplama, veri analizi ve algoritma geliştirme için yüksek seviyeli bir programlama dilidir. Sinyal işleme ve kontrol sistemlerinde yaygındır.', rating: 5, careerAnalysis: { opportunities: ['Kontrol ve Otomasyon', 'Veri Analizi ve Sinyal İşleme', 'Akademik Araştırma', 'Finansal Mühendislik'], titles: ['Kontrol Sistemleri Mühendisi', 'Veri Analisti', 'Simulink Modelleme Uzmanı', 'Algoritma Geliştirme Mühendisi'], skills: ['Sayısal Analiz', 'Simulink ile Sistem Modelleme', 'Veri Görselleştirme', 'Algoritma Geliştirme'] }, projectIdea: { title: 'Bir Çekme Testi Verisinin Analizi ve Grafiklenmesi', description: 'Bir metal numunenin çekme testi sonucu elde edilen kuvvet ve uzama verilerini (bir Excel dosyasından) MATLAB\'e aktarın. Bu verileri kullanarak gerilme-genim eğrisini çizin ve malzemenin akma dayanımı, çekme dayanımı ve elastisite modülü gibi temel mekanik özelliklerini otomatik olarak hesaplayan bir script yazın.' }, iconicExamples: [{title: 'Mars Keşif Aracı (Rover) Kontrol Algoritmaları', description: 'NASA, Mars yüzeyinde hareket eden Curiosity ve Perseverance gibi robotların otonom navigasyon, tekerlek kontrolü ve robot kolu hareketlerini modellemek ve test etmek için MATLAB ve Simulink\'i kullanır.'}, {title: 'Tıbbi Görüntü İşleme (MRI, CT)', description: 'Hastanelerdeki MRI ve CT tarayıcılarından gelen ham verilerin işlenerek anlamlı 3D görüntülere dönüştürülmesinde, MATLAB\'in sinyal ve görüntü işleme algoritmaları yaygın olarak kullanılır.'}] },
+            { name: 'Python', company: 'Python Software Foundation', category: 'Programlama & Otomasyon', description: 'Çok yönlü ve öğrenmesi kolay bir dildir. Veri bilimi, yapay zeka ve otomasyon kütüphaneleri (NumPy, Pandas) sayesinde mühendislikte popülaritesi artmaktadır.', rating: 4, careerAnalysis: { opportunities: ['Veri Bilimi ve Makine Öğrenmesi', 'Proses Otomasyonu', 'Bilimsel Hesaplama', 'Endüstri 4.0'], titles: ['Veri Bilimci', 'Otomasyon Mühendisi', 'Makine Öğrenmesi Mühendisi', 'Yazılım Geliştirici'], skills: ['NumPy, Pandas, Matplotlib', 'Nesne Yönelimli Programlama', 'Veri Analizi', 'API Entegrasyonları'] }, projectIdea: { title: 'Mikroyapı Görüntülerinden Tane Boyutu Hesaplama Scripti', description: 'Bir metalin mikroskop altında çekilmiş mikroyapı görüntüsünü (JPG/PNG) işlemek için OpenCV ve NumPy gibi Python kütüphanelerini kullanın. Görüntü işleme teknikleriyle (eşikleme, kenar bulma vb.) tane sınırlarını belirleyerek ortalama tane boyutunu ASTM standartlarına göre otomatik olarak hesaplayan bir script geliştirin.' }, iconicExamples: [{title: 'Spotify Müzik Öneri Motoru', description: 'Spotify, milyarlarca dinleme verisini analiz ederek kullanıcılara kişiselleştirilmiş çalma listeleri (Haftalık Keşif vb.) sunmak için Python tabanlı makine öğrenmesi modelleri kullanır.'}, {title: 'Instagram İçerik Akışı', description: 'Instagram\'ın ana sayfanızda hangi gönderileri, hangi sırayla göstereceğini belirleyen karmaşık algoritma, büyük ölçüde Python ve onun veri bilimi kütüphaneleri üzerine kuruludur.'}] },
+            { name: 'Java', company: 'Oracle Corporation', category: 'Programlama & Otomasyon', description: 'Platformdan bağımsız, nesne yönelimli ve güçlü bir programlama dilidir. Büyük ölçekli kurumsal uygulamalar ve gömülü sistemler için kullanılır.', rating: 3, careerAnalysis: { opportunities: ['Kurumsal Yazılım', 'Büyük Veri Platformları', 'Gömülü Sistemler ve IoT', 'Android Uygulama Geliştirme'], titles: ['Java Yazılım Geliştirici', 'Backend Geliştirici', 'Gömülü Sistemler Mühendisi', 'Büyük Veri Mühendisi'], skills: ['OOP İlkeleri', 'Veri Yapıları ve Algoritmalar', 'Spring Framework', 'Veritabanı Yönetimi'] }, projectIdea: { title: 'Basit bir Malzeme Veri Tabanı Yönetim Uygulaması', description: 'Kullanıcının farklı malzemeler (çelik, alüminyum vb.) ve bu malzemelerin mekanik özelliklerini (akma dayanımı, sertlik vb.) ekleyebileceği, silebileceği ve arayabileceği basit bir masaüstü arayüzü uygulaması geliştirin. Proje, Java\'nın temel nesne yönelimli programlama ve arayüz (Swing/JavaFX) yeteneklerini kullanmak için iyi bir fırsattır.' }, iconicExamples: [{title: 'Android İşletim Sistemi', description: 'Dünyanın en yaygın mobil işletim sistemi olan Android\'in uygulamalarının büyük bir çoğunluğu ve temel altyapısının önemli bir kısmı Java kullanılarak geliştirilmiştir.'}, {title: 'Minecraft Oyunu', description: 'Tarihin en çok satan video oyunlarından biri olan Minecraft\'ın orijinal PC versiyonu (Java Edition), tamamen Java ile yazılmıştır ve bu, dilin ne kadar güçlü ve esnek olabileceğinin bir kanıtıdır.'}] },
+            { name: 'LabVIEW', company: 'National Instruments', category: 'Programlama & Otomasyon', description: 'Grafiksel bir programlama ortamıdır. Özellikle test, ölçüm ve kontrol sistemleri otomasyonu için tasarlanmıştır ve donanımlarla kolayca entegre olur.', rating: 3, careerAnalysis: { opportunities: ['Test ve Ölçüm Otomasyonu', 'Kalite Kontrol', 'Veri Toplama (DAQ) Sistemleri', 'Endüstriyel Kontrol'], titles: ['Test Otomasyon Mühendisi', 'Kontrol Mühendisi', 'Uygulama Mühendisi', 'Ar-Ge Teknikeri'], skills: ['Grafiksel Programlama', 'Veri Toplama Donanımları', 'Enstrüman Kontrolü', 'Real-Time Programlama'] }, projectIdea: { title: 'Sanal Sıcaklık İzleme ve Alarm Sistemi', description: 'Bir sıcaklık sensöründen (termokupl) gelen veriyi simüle ederek, LabVIEW\'de bu veriyi anlık olarak bir göstergede ve zamanla bir grafikte gösteren sanal bir enstrüman (VI) oluşturun. Sıcaklık belirli bir eşik değeri aştığında kullanıcıyı uyaran görsel bir alarm (örneğin yanıp sönen bir LED) ekleyin.' }, iconicExamples: [{title: 'CERN Büyük Hadron Çarpıştırıcısı', description: 'Dünyanın en büyük parçacık hızlandırıcısı olan CERN\'deki deneylerde, binlerce sensörden gelen veriyi toplamak, analiz etmek ve kontrol sistemlerini yönetmek için LabVIEW yaygın olarak kullanılır.'}, {title: 'SpaceX Fırlatma Kontrol Sistemleri', description: 'SpaceX, Falcon 9 roketlerinin ve Dragon kapsüllerinin fırlatma öncesi test ve fırlatma sırasındaki veri toplama sistemlerinin bir kısmında LabVIEW tabanlı donanım ve yazılımları kullanmaktadır.'}] },
+            { name: 'SAP ERP', company: 'SAP SE', category: 'Kurumsal Kaynak Planlama', description: 'Büyük işletmelerin üretim, tedarik zinciri gibi süreçlerini tek sistemde yöneten bir kurumsal kaynak planlama yazılımıdır. Verimliliği ve kontrolü artırır.', rating: 4, careerAnalysis: { opportunities: ['Üretim Planlama', 'Tedarik Zinciri Yönetimi', 'ERP Danışmanlığı', 'İş Analistliği'], titles: ['Üretim Planlama Uzmanı', 'SAP Modül Danışmanı (PP, MM)', 'İş Analisti', 'Tedarik Zinciri Yöneticisi'], skills: ['Malzeme İhtiyaç Planlaması (MRP)', 'Üretim Planlama (PP Modülü)', 'Malzeme Yönetimi (MM Modülü)', 'İş Süreçleri Analizi'] }, projectIdea: { title: 'Bir Montaj Hattı için Basit Bir Üretim ve Stok Planı Oluşturma', description: 'Bisiklet montajı yapan bir firma için teorik bir senaryo oluşturun. Gidon, sele, tekerlek gibi temel bileşenlerin stok seviyelerini ve bir haftalık üretim hedefini belirleyin. SAP ERP\'nin temel mantığını kullanarak bu hedefe ulaşmak için hangi malzemeden ne kadar sipariş verilmesi gerektiğini ve üretim emrinin nasıl oluşturulacağını kağıt üzerinde veya bir Excel tablosunda planlayın.' }, iconicExamples: [{title: 'BMW\'nin Küresel Tedarik Zinciri', description: 'BMW, dünya çapındaki fabrikaları, tedarikçileri ve satış ağları arasındaki tüm lojistik, üretim ve finansal süreçleri yönetmek için SAP ERP sistemini kullanır.'}, {title: 'Coca-Cola\'nın Dağıtım Ağı', description: 'Coca-Cola, milyarlarca ürünün üretiminden dünya çapındaki milyonlarca satış noktasına dağıtımına kadar tüm tedarik zinciri operasyonlarını SAP ile yönetir.'}] }
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const grid = document.getElementById('software-grid');
+            const filterButtonsContainer = document.getElementById('filters').querySelector('div');
+            
+            const detailsModal = document.getElementById('details-modal');
+            const modalTitle = document.getElementById('modal-title');
+
+            const tabs = detailsModal.querySelectorAll('.tab-btn');
+            const careerTabContent = document.getElementById('career-tab-content');
+            const projectTabContent = document.getElementById('project-tab-content');
+            const examplesTabContent = document.getElementById('examples-tab-content');
+            
+            const categories = ['Tümü', ...new Set(softwareData.map(item => item.category))];
+            const icons = {
+                opportunities: `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>`,
+                titles: `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>`,
+                skills: `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>`
+            };
+            
+            function openModal(modalElement) {
+                modalElement.classList.remove('hidden');
+                modalElement.classList.add('flex');
+                setTimeout(() => {
+                    modalElement.querySelector('.transform').classList.remove('scale-95', 'opacity-0');
+                }, 10);
+            }
+
+            function closeModal(modalElement) {
+                modalElement.querySelector('.transform').classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    modalElement.classList.add('hidden');
+                    modalElement.classList.remove('flex');
+                }, 300);
+            }
+
+            detailsModal.querySelectorAll('.close-modal-btn').forEach(btn => btn.addEventListener('click', () => closeModal(detailsModal)));
+            detailsModal.addEventListener('click', (e) => { if (e.currentTarget === e.target) closeModal(detailsModal); });
+
+            function createStarRating(rating) {
+                let stars = '';
+                for (let i = 0; i < 5; i++) {
+                    stars += `<span class="${i < rating ? 'text-amber-400' : 'text-slate-300'} text-xl">&#9733;</span>`;
+                }
+                return `<div class="flex items-center" title="Kullanım Sıklığı: ${rating}/5">${stars}</div>`;
+            }
+
+            function renderCards(items) {
+                grid.innerHTML = '';
+                items.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'glass-card rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 ease-in-out hover:-translate-y-2 flex flex-col border-t-4 border-teal-500/50';
+                    const descriptionText = item.description;
+                    const maxLength = 120;
+                    let descriptionHTML;
+
+                    if (descriptionText.length > maxLength) {
+                        const visibleText = descriptionText.substring(0, maxLength);
+                        const hiddenText = descriptionText.substring(maxLength);
+                        descriptionHTML = `${visibleText}<span class="hidden-text" style="display: none;">${hiddenText}</span><span class="read-more">... daha fazla</span>`;
+                    } else {
+                        descriptionHTML = descriptionText;
+                    }
+
+                    card.innerHTML = `<div class="p-6 flex-grow"><div class="flex justify-between items-start mb-3"><h3 class="text-2xl font-bold text-slate-800">${item.name}</h3>${createStarRating(item.rating)}</div><p class="text-sm font-medium text-slate-500 mb-4">${item.company}</p><p class="text-slate-600 leading-relaxed">${descriptionHTML}</p></div><div class="px-6 py-4 bg-white/50 flex justify-between items-center"><span class="inline-block bg-teal-100 text-teal-800 text-xs font-semibold px-3 py-1 rounded-full">${item.category}</span><button class="details-btn bg-gradient-to-r from-teal-500 to-cyan-500 text-white px-4 py-2 rounded-full text-sm font-semibold hover:from-teal-600 hover:to-cyan-600 transition-all duration-300 transform hover:scale-105 flex items-center gap-2 shadow-md" data-name="${item.name}">Detayları Gör</button></div>`;
+                    grid.appendChild(card);
+                });
+            }
+
+            function renderFilterButtons() {
+                categories.forEach(category => {
+                    const button = document.createElement('button');
+                    button.textContent = category;
+                    button.dataset.category = category;
+                    button.className = 'filter-btn px-4 py-2 sm:px-5 sm:py-2 bg-white text-slate-700 rounded-full shadow-md hover:bg-slate-200 transition-all duration-300 font-semibold text-sm sm:text-base';
+                    if(category === 'Tümü') button.classList.add('active-filter');
+                    filterButtonsContainer.appendChild(button);
+                });
+                
+                document.querySelectorAll('.filter-btn').forEach(button => {
+                    button.addEventListener('click', () => {
+                        document.querySelector('.active-filter')?.classList.remove('active-filter');
+                        button.classList.add('active-filter');
+                        const filteredData = button.dataset.category === 'Tümü' ? softwareData : softwareData.filter(item => item.category === button.dataset.category);
+                        renderCards(filteredData);
+                    });
+                });
+            }
+
+            function renderChart() {
+                const ctx = document.getElementById('categoryChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'doughnut', data: { labels: categories.slice(1), datasets: [{ label: 'Yazılım Sayısı', data: categories.slice(1).map(cat => softwareData.filter(item => item.category === cat).length), backgroundColor: ['rgba(20, 184, 166, 0.8)', 'rgba(6, 182, 212, 0.8)', 'rgba(59, 130, 246, 0.8)', 'rgba(139, 92, 246, 0.8)', 'rgba(120, 113, 108, 0.8)'], borderColor: '#f1f5f9', borderWidth: 4, hoverOffset: 15, hoverBorderColor: '#fff', }] },
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { padding: 25, font: { size: 14, weight: '500' }, color: '#475569' } } } }
+                });
+            }
+
+            function showDetails(software) {
+                modalTitle.textContent = `${software.name} için Detaylı Analiz`;
+                
+                // Career Analysis Tab
+                const { opportunities, titles, skills } = software.careerAnalysis;
+                const createCareerCard = (title, key, items) => {
+                    const listItems = items.map(item => `<li class="flex items-start text-slate-600"><span class="text-teal-500 mr-3 mt-1">&#10003;</span><span>${item}</span></li>`).join('');
+                    return `<div class="bg-white rounded-lg p-6 shadow-lg border border-slate-100"><div class="flex items-center mb-4">${icons[key]}<h3 class="text-lg font-bold text-slate-800 ml-3">${title}</h3></div><ul class="space-y-2">${listItems}</ul></div>`;
+                };
+                careerTabContent.innerHTML = `<div class="grid md:grid-cols-3 gap-4 md:gap-6">${createCareerCard('Kariyer Fırsatları', 'opportunities', opportunities)}${createCareerCard('Potansiyel Unvanlar', 'titles', titles)}${createCareerCard('Önemli Yetenekler', 'skills', skills)}</div>`;
+
+                // Project Idea Tab
+                const { title, description } = software.projectIdea;
+                projectTabContent.innerHTML = `<div class="bg-white p-6 rounded-lg shadow-lg border"><h4 class="font-bold text-xl text-teal-700 mb-3">${title}</h4><p class="text-slate-600 leading-relaxed">${description}</p></div>`;
+
+                // Iconic Examples Tab
+                const examplesHTML = software.iconicExamples.map(example => `
+                    <div class="bg-white p-6 rounded-lg shadow-lg border">
+                        <h4 class="font-bold text-xl text-teal-700 mb-2">${example.title}</h4>
+                        <p class="text-slate-600 leading-relaxed">${example.description}</p>
+                    </div>
+                `).join('');
+                examplesTabContent.innerHTML = `<div class="space-y-6">${examplesHTML}</div>`;
+
+                // Reset tabs to default
+                tabs.forEach(t => t.classList.remove('active'));
+                tabs[0].classList.add('active');
+                careerTabContent.classList.remove('hidden');
+                projectTabContent.classList.add('hidden');
+                examplesTabContent.classList.add('hidden');
+
+                openModal(detailsModal);
+            }
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+                    document.getElementById(`${tab.dataset.tab}-tab-content`).classList.remove('hidden');
+                });
+            });
+
+            grid.addEventListener('click', e => {
+                const detailsButton = e.target.closest('.details-btn');
+                if (detailsButton) {
+                    const softwareName = detailsButton.dataset.name;
+                    const software = softwareData.find(item => item.name === softwareName);
+                    if (software) {
+                       showDetails(software);
+                    }
+                }
+
+                if (e.target.classList.contains('read-more')) {
+                    const hiddenSpan = e.target.previousElementSibling;
+                    if (hiddenSpan && hiddenSpan.classList.contains('hidden-text')) {
+                        hiddenSpan.style.display = 'inline';
+                        e.target.style.display = 'none';
+                    }
+                }
+            });
+
+            renderFilterButtons();
+            renderCards(softwareData);
+            renderChart();
+        });
+    </script>
+</body>
+</html>
